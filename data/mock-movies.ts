@@ -1,0 +1,108 @@
+import type { Movie } from "@/components/movies/movie-card"
+
+export const mockMovies: Movie[] = [
+  {
+    id: "1",
+    title: "Guardianes de la Galaxia Vol. 3",
+    genre: "Acción",
+    duration: 150,
+    rating: 8.2,
+    poster: "/guardianes-de-la-galaxia-poster.png",
+    description:
+      "Peter Quill debe reunir a su equipo para defender el universo y proteger a uno de los suyos. Si la misión no es completamente exitosa, podría ser el fin de los Guardianes tal como los conocemos.",
+    showtimes: ["14:00", "17:30", "21:00"],
+    price: 40.0,
+    releaseDate: "2023-05-05",
+  },
+  {
+    id: "2",
+    title: "Spider-Man: A Través del Spider-Verso",
+    genre: "Animación",
+    duration: 140,
+    rating: 9.1,
+    poster: "/spider-man-into-the-spider-verse-poster.png",
+    description:
+      "Miles Morales regresa para la próxima aventura del Spider-Verse, una epopeya que transportará al amigable vecino de Brooklyn Spider-Man a través del Multiverso.",
+    showtimes: ["15:00", "18:00", "20:30"],
+    price: 35.0,
+    releaseDate: "2023-06-02",
+  },
+  {
+    id: "3",
+    title: "John Wick: Capítulo 4",
+    genre: "Acción",
+    duration: 169,
+    rating: 7.8,
+    poster: "/john-wick-chapter-4-poster.png",
+    description:
+      "John Wick descubre un camino para derrotar a la Mesa Directiva. Pero antes de que pueda ganar su libertad, Wick debe enfrentarse a un nuevo enemigo con poderosas alianzas en todo el mundo.",
+    showtimes: ["16:00", "19:30", "22:30"],
+    price: 12.0,
+    releaseDate: "2023-03-24",
+  },
+  {
+    id: "4",
+    title: "La Sirenita",
+    genre: "Aventura",
+    duration: 135,
+    rating: 7.2,
+    poster: "/the-little-mermaid-2023-poster.png",
+    description:
+      "La historia de la joven sirena Ariel, quien sueña con la vida en la superficie. Cuando se enamora de un príncipe humano, hace un trato con la bruja del mar para convertirse en humana.",
+    showtimes: ["14:30", "17:00", "19:30"],
+    price: 40.0,
+    releaseDate: "2023-05-26",
+  },
+  {
+    id: "5",
+    title: "Fast X",
+    genre: "Acción",
+    duration: 141,
+    rating: 6.9,
+    poster: "/fast-x-poster.png",
+    description:
+      "Dom Toretto y su familia se ven amenazados por el vengativo hijo del capo de las drogas Hernán Reyes.",
+    showtimes: ["15:30", "18:30", "21:30"],
+    price: 37.5,
+    releaseDate: "2023-05-19",
+  },
+  {
+    id: "6",
+    title: "Scream VI",
+    genre: "Terror",
+    duration: 123,
+    rating: 6.8,
+    poster: "/scream-6-poster.png",
+    description:
+      "Después de los últimos asesinatos de Ghostface, los cuatro supervivientes abandonan Woodsboro para comenzar un nuevo capítulo en Nueva York.",
+    showtimes: ["20:00", "22:15"],
+    price: 43.0,
+    releaseDate: "2023-03-10",
+  },
+  {
+    id: "7",
+    title: "Transformers: El Despertar de las Bestias",
+    genre: "Ciencia Ficción",
+    duration: 127,
+    rating: 6.3,
+    poster: "/transformers-rise-of-the-beasts-poster.png",
+    description:
+      "Los Autobots y Decepticons regresan junto con los Maximals, Predacons y Terrorcons en la batalla existencial por el destino de la humanidad.",
+    showtimes: ["16:30", "19:00", "21:45"],
+    price: 37.5,
+    releaseDate: "2023-06-09",
+  },
+  {
+    id: "8",
+    title: "Indiana Jones y el Dial del Destino",
+    genre: "Aventura",
+    duration: 154,
+    rating: 7.1,
+    poster: "/indiana-jones-dial-of-destiny-poster.png",
+    description:
+      "El arqueólogo Indiana Jones corre contra el tiempo para recuperar un artefacto legendario que puede cambiar el curso de la historia.",
+    showtimes: ["15:00", "18:15", "21:30"],
+    price: 40.0,
+    releaseDate: "2023-06-30",
+  },
+]
