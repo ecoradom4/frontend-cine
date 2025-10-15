@@ -158,9 +158,15 @@ export default function MovieDetailPage() {
       // hora estricta
       if (selectedTime && s.time !== selectedTime) return false;
 
+      // ⏰ ocultar funciones pasadas
+      const showtimeDateTime = new Date(`${s.date}T${s.time}`);
+      const now = new Date();
+      if (showtimeDateTime.getTime() <= now.getTime()) return false;
+
       return true;
     });
   }, [allShowtimes, rooms, debouncedSearch, roomType, roomLocation, selectedDate, selectedTime]);
+
 
   // 5) Opciones progresivas para los selects, basadas en lo ya elegido
   const availableRoomTypes = useMemo(() => {
@@ -219,20 +225,18 @@ export default function MovieDetailPage() {
   const availableDates = useMemo(() => {
     const set = new Set<string>();
     filteredShowtimes
-      .filter((s) => !selectedDate || s.date === selectedDate) // mantiene fecha si ya está
+      .filter((s) => !selectedDate || s.date === selectedDate)
       .forEach((s) => set.add(s.date));
-    return Array.from(set).sort(); // "YYYY-MM-DD" se ordena bien alfabéticamente
+    return Array.from(set).sort();
   }, [filteredShowtimes, selectedDate]);
 
+
   const availableTimes = useMemo(() => {
-    // Solo horas que existan para la fecha seleccionada; si no hay fecha, devolvemos vacío (deshabilita el select)
-    if (!selectedDate) return [];
     const set = new Set<string>();
-    filteredShowtimes
-      .filter((s) => s.date === selectedDate)
-      .forEach((s) => set.add(s.time));
-    return Array.from(set).sort(); // "HH:mm:ss" se ordena bien
-  }, [filteredShowtimes, selectedDate]);
+    filteredShowtimes.forEach((s) => set.add(s.time));
+    return Array.from(set).sort(); // siempre mostrar todas las horas posibles
+  }, [filteredShowtimes]);
+
 
   // 6) Reset encadenado (si cambia algo “anterior” invalidando dependientes)
   useEffect(() => {
@@ -337,146 +341,147 @@ export default function MovieDetailPage() {
 
             {/* Filtros */}
             <Card>
-  <CardContent className="p-6 space-y-6">
-    <div className="flex justify-between items-center">
-      <h3 className="text-xl font-semibold flex items-center gap-2">
-        <MapPin className="h-5 w-5 text-primary" />
-        Filtrar funciones
-      </h3>
+              <CardContent className="p-6 space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-semibold flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    Filtrar funciones
+                  </h3>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-muted-foreground hover:text-foreground"
-        onClick={clearFilters}
-      >
-        <XCircle className="h-4 w-4 mr-1" /> Limpiar
-      </Button>
-    </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={clearFilters}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" /> Limpiar
+                  </Button>
+                </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-      {/* 🔍 Buscar sala o ubicación */}
-      <Input
-        placeholder="Buscar sala o ubicación..."
-        value={searchRoom}
-        onChange={(e) => setSearchRoom(e.target.value)}
-      />
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* 🔍 Buscar sala o ubicación */}
+                  <Input
+                    placeholder="Buscar sala o ubicación..."
+                    value={searchRoom}
+                    onChange={(e) => setSearchRoom(e.target.value)}
+                  />
 
-      {/* 🏷 Tipo de sala */}
-      <Select
-        value={roomType || "__all__"}
-        onValueChange={(v) => setRoomType(v === "__all__" ? "" : v)}
-      >
-        <SelectTrigger><SelectValue placeholder="Tipo de sala" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">Todas</SelectItem>
-          {availableRoomTypes.map((t) => (
-            <SelectItem key={t} value={t}>{t}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+                  {/* 🏷 Tipo de sala */}
+                  <Select
+                    value={roomType || "__all__"}
+                    onValueChange={(v) => setRoomType(v === "__all__" ? "" : v)}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Tipo de sala" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas</SelectItem>
+                      {availableRoomTypes.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-      {/* 📍 Ubicación */}
-      <Select
-        value={roomLocation || "__all__"}
-        onValueChange={(v) => setRoomLocation(v === "__all__" ? "" : v)}
-      >
-        <SelectTrigger><SelectValue placeholder="Ubicación" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">Todas</SelectItem>
-          {availableLocations.map((loc) => (
-            <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+                  {/* 📍 Ubicación */}
+                  <Select
+                    value={roomLocation || "__all__"}
+                    onValueChange={(v) => setRoomLocation(v === "__all__" ? "" : v)}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Ubicación" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas</SelectItem>
+                      {availableLocations.map((loc) => (
+                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-      {/* 📅 Fecha */}
-      <Select
-        value={selectedDate || "__all__"}
-        onValueChange={(v) => {
-          if (v === "__all__") {
-            setSelectedDate("");
-            setSelectedTime("");
-          } else {
-            setSelectedDate(v);
-            setSelectedTime("");
-          }
-        }}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Fecha" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">Todas</SelectItem>
-          {availableDates.length === 0 ? (
-            <div className="px-2 py-1 text-muted-foreground text-sm">Sin fechas</div>
-          ) : (
-            availableDates.map((d) => (
-              <SelectItem key={d} value={d}>{d}</SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
+                  {/* 📅 Fecha */}
+                  <Select
+                    value={selectedDate || "__all__"}
+                    onValueChange={(v) => {
+                      if (v === "__all__") {
+                        setSelectedDate("");
+                        setSelectedTime("");
+                      } else {
+                        setSelectedDate(v);
+                        setSelectedTime("");
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Fecha" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas</SelectItem>
+                      {availableDates.length === 0 ? (
+                        <div className="px-2 py-1 text-muted-foreground text-sm">Sin fechas</div>
+                      ) : (
+                        availableDates.map((d) => (
+                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
 
-      {/* ⏰ Hora */}
-      <Select
-        value={selectedTime || "__all__"}
-        onValueChange={(v) => setSelectedTime(v === "__all__" ? "" : v)}
-        disabled={!selectedDate || availableTimes.length === 0}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder={selectedDate ? "Hora" : "Seleccione fecha"} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">Todas</SelectItem>
-          {availableTimes.length === 0 ? (
-            <div className="px-2 py-1 text-muted-foreground text-sm">Sin horarios</div>
-          ) : (
-            availableTimes.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t.slice(0, 5)} hrs
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
-    </div>
+                  {/* ⏰ Hora */}
+                  <Select
+                    value={selectedTime || "__all__"}
+                    onValueChange={(v) => setSelectedTime(v === "__all__" ? "" : v)}
+                    disabled={!selectedDate || availableTimes.length === 0}
+                  >
 
-    {/* 🎞 Listado de funciones */}
-    <div className="mt-4 space-y-4">
-      {isLoading ? (
-        <p className="text-muted-foreground">Cargando funciones...</p>
-      ) : filteredShowtimes.length === 0 ? (
-        <p className="text-muted-foreground">
-          No hay funciones disponibles con los filtros seleccionados.
-        </p>
-      ) : (
-        filteredShowtimes.map((s) => {
-          const room = rooms.find((r) => r.id === s.room_id);
-          return (
-            <div
-              key={s.id}
-              className="border p-4 rounded-lg flex justify-between items-center"
-            >
-              <div>
-                <p className="font-semibold">{room?.name ?? s.room?.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {s.date} — {s.time} — {room?.type ?? "—"} — {room?.location ?? "—"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold">Q{s.price}</p>
-                <Button size="sm" asChild>
-                  <Link href={`/reservar/${s.id}`}>Comprar</Link>
-                </Button>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  </CardContent>
-</Card>
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedDate ? "Hora" : "Seleccione fecha"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas</SelectItem>
+                      {availableTimes.length === 0 ? (
+                        <div className="px-2 py-1 text-muted-foreground text-sm">Sin horarios</div>
+                      ) : (
+                        availableTimes.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t.slice(0, 5)} hrs
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 🎞 Listado de funciones */}
+                <div className="mt-4 space-y-4">
+                  {isLoading ? (
+                    <p className="text-muted-foreground">Cargando funciones...</p>
+                  ) : filteredShowtimes.length === 0 ? (
+                    <p className="text-muted-foreground">
+                      No hay funciones disponibles con los filtros seleccionados.
+                    </p>
+                  ) : (
+                    filteredShowtimes.map((s) => {
+                      const room = rooms.find((r) => r.id === s.room_id);
+                      return (
+                        <div
+                          key={s.id}
+                          className="border p-4 rounded-lg flex justify-between items-center"
+                        >
+                          <div>
+                            <p className="font-semibold">{room?.name ?? s.room?.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {s.date} — {s.time} — {room?.type ?? "—"} — {room?.location ?? "—"}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold">Q{s.price}</p>
+                            <Button size="sm" asChild>
+                              <Link href={`/reservar/${s.id}`}>Comprar</Link>
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
           </div>
         </div>
