@@ -48,14 +48,11 @@ class AuthApiService {
   async login(credentials: LoginRequest): Promise<AuthData> {
     const response = await fetch(`${this.baseURL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
 
     const result: ApiResponse<AuthData> = await response.json();
-    
     if (!response.ok || !result.success) {
       throw new Error(result.message || 'Login failed');
     }
@@ -64,22 +61,15 @@ class AuthApiService {
   }
 
   async register(userData: Omit<RegisterRequest, 'role'>): Promise<AuthData> {
-    // Siempre establecer el rol como "cliente" automáticamente
-    const registrationData: RegisterRequest = {
-      ...userData,
-      role: 'cliente'
-    };
+    const registrationData: RegisterRequest = { ...userData, role: 'cliente' };
 
     const response = await fetch(`${this.baseURL}/auth/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(registrationData),
     });
 
     const result: ApiResponse<AuthData> = await response.json();
-    
     if (!response.ok || !result.success) {
       throw new Error(result.message || 'Registration failed');
     }
@@ -91,18 +81,39 @@ class AuthApiService {
     const response = await fetch(`${this.baseURL}/auth/profile`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
 
     const result: ApiResponse<ProfileData> = await response.json();
-    
     if (!response.ok || !result.success) {
       throw new Error(result.message || 'Failed to fetch profile');
     }
 
     return result.data.user;
+  }
+
+  // 🔒 Nuevo: Logout
+  async logout(token: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${this.baseURL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Error al cerrar sesión');
+    }
+
+    return {
+      success: result.success,
+      message: result.message,
+    };
   }
 }
 

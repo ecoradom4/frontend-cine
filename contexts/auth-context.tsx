@@ -9,8 +9,8 @@ export type UserRole = "cliente" | "admin"
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; message?: string }> // Remover role
-  logout: () => void
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; message?: string }>
+  logout: () => Promise<{ success: boolean; message?: string }>
   isLoading: boolean
 }
 
@@ -29,8 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userData = await authApi.getProfile(token)
           setUser(userData)
         } catch (error) {
-          console.error('Failed to validate token:', error)
-          // Token is invalid, clear storage
+          console.error("Failed to validate token:", error)
           localStorage.removeItem("cine-connect-user")
           localStorage.removeItem("cine-connect-token")
         }
@@ -43,53 +42,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true)
-
     try {
       const authData = await authApi.login({ email, password })
-      
       setUser(authData.user)
       localStorage.setItem("cine-connect-user", JSON.stringify(authData.user))
       localStorage.setItem("cine-connect-token", authData.token)
-      
-      setIsLoading(false)
       return { success: true }
     } catch (error: any) {
-      console.error('Login error:', error)
+      console.error("Login error:", error)
+      return { success: false, message: error.message || "Error al iniciar sesión" }
+    } finally {
       setIsLoading(false)
-      return { 
-        success: false, 
-        message: error.message || 'Error al iniciar sesión' 
-      }
     }
   }
 
   const register = async (name: string, email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true)
-
     try {
-      // Solo pasar name, email y password - el role se establece automáticamente en el servicio
       const authData = await authApi.register({ name, email, password })
-      
       setUser(authData.user)
       localStorage.setItem("cine-connect-user", JSON.stringify(authData.user))
       localStorage.setItem("cine-connect-token", authData.token)
-      
-      setIsLoading(false)
       return { success: true }
     } catch (error: any) {
-      console.error('Registration error:', error)
+      console.error("Registration error:", error)
+      return { success: false, message: error.message || "Error al registrar usuario" }
+    } finally {
       setIsLoading(false)
-      return { 
-        success: false, 
-        message: error.message || 'Error al registrar usuario' 
-      }
     }
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("cine-connect-user")
-    localStorage.removeItem("cine-connect-token")
+  /**
+   * 🔒 Logout con llamada al backend
+   */
+  const logout = async (): Promise<{ success: boolean; message?: string }> => {
+    const token = localStorage.getItem("cine-connect-token")
+
+    try {
+      if (token) {
+        const result = await authApi.logout(token)
+        console.log("Logout API response:", result)
+      }
+    } catch (error: any) {
+      console.warn("Logout error:", error)
+    } finally {
+      // Limpieza local garantizada
+      localStorage.removeItem("cine-connect-user")
+      localStorage.removeItem("cine-connect-token")
+      setUser(null)
+    }
+
+    return { success: true, message: "Sesión cerrada exitosamente" }
   }
 
   return (

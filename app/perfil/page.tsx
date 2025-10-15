@@ -9,16 +9,22 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Calendar, Clock, MapPin, User, Download, Star, Film } from "lucide-react"
-import { redirect } from "next/navigation"
+import { useRouter } from "next/navigation" // ✅ usamos useRouter en lugar de redirect
 import { bookingsUserApi, type UserBooking } from "@/services/bookings-user-api"
 
 export default function ProfilePage() {
   const { user } = useAuth()
+  const router = useRouter() // ✅ Hook para navegación en cliente
   const [bookings, setBookings] = useState<UserBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  if (!user) redirect("/auth")
+  
+  useEffect(() => {
+    if (!user) {
+      router.push("/auth")
+    }
+  }, [user, router])
 
   useEffect(() => {
     const loadBookings = async () => {

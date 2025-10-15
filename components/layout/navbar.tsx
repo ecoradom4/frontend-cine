@@ -10,9 +10,22 @@ export function Navbar() {
   const { user, logout } = useAuth()
   const router = useRouter()
 
-  const handleLogout = () => {
-    logout()
-    router.push("/auth")
+  // 🔒 Logout asíncrono con redirección controlada
+  const handleLogout = async () => {
+    try {
+      const result = await logout() // Espera a que el logout borre token y usuario
+
+      if (result.success) {
+        // Redirigir solo después de limpiar el estado
+        router.push("/auth")
+      } else {
+        console.warn("El logout no devolvió success:", result)
+        router.push("/auth") // fallback
+      }
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error)
+      router.push("/auth") // fallback por seguridad
+    }
   }
 
   if (!user) return null
