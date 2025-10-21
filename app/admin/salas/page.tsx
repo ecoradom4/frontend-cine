@@ -49,7 +49,7 @@ export default function AdminRoomsPage() {
     capacity: "",
     type: "Estándar" as "Estándar" | "Premium" | "VIP" | "IMAX" | "4DX",
     status: "active" as "active" | "maintenance" | "inactive",
-    location: "Planta Baja" as "Planta Baja" | "Primer Piso" | "Segundo Piso" | "Tercer Piso",
+    location: "Miraflores" as "Miraflores" | "Antigua Telares" | "Cayala" | "Oakland Mall",
   })
 
   // Filtrar salas localmente para búsqueda en tiempo real
@@ -77,7 +77,7 @@ export default function AdminRoomsPage() {
         capacity: "",
         type: "Estándar",
         status: "active",
-        location: "Planta Baja",
+        location: "Miraflores",
       })
     }
     setIsDialogOpen(true)
@@ -117,7 +117,7 @@ export default function AdminRoomsPage() {
           capacity: "",
           type: "Estándar",
           status: "active",
-          location: "Planta Baja",
+          location: "Miraflores",
         })
       }
     } catch (err) {
@@ -260,7 +260,7 @@ export default function AdminRoomsPage() {
                       <Label htmlFor="location">Ubicación *</Label>
                       <Select
                         value={formData.location}
-                        onValueChange={(value: "Planta Baja" | "Primer Piso" | "Segundo Piso" | "Tercer Piso") => 
+                        onValueChange={(value: "Miraflores" | "Antigua Telares" | "Cayala" | "Oakland Mall") => 
                           setFormData({ ...formData, location: value })
                         }
                       >
