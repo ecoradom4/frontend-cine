@@ -22,12 +22,22 @@ interface PaymentFormProps {
   onPaymentComplete: (paymentData: any) => void
   onBack: () => void
   showtimeId: string
+  // ✅ Hacer opcional
+  ticketPrices?: {
+    standard: number
+    premium: number
+    vip: number
+  }
 }
 
-const seatPrices = {
-  standard: 12.5,
-  premium: 15.0,
-  vip: 20.0,
+// ✅ Función helper para asegurar el tipo de asiento
+const ensureSeatType = (type: string): "standard" | "premium" | "vip" => {
+  if (type === "standard" || type === "premium" || type === "vip") {
+    return type
+  }
+  // Log para debugging
+  console.warn(`Tipo de asiento inválido: ${type}, usando "standard" como fallback`)
+  return "standard"
 }
 
 export function PaymentForm({
@@ -39,6 +49,7 @@ export function PaymentForm({
   onPaymentComplete,
   onBack,
   showtimeId,
+  ticketPrices, // ✅ Ahora es opcional
 }: PaymentFormProps) {
   const { user } = useAuth()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -54,6 +65,21 @@ export function PaymentForm({
 
   const fees = totalPrice * 0.05
   const finalTotal = totalPrice + fees
+
+  // 🔹 Función para obtener precio de asiento
+  const getSeatPrice = (seatType: "standard" | "premium" | "vip"): number => {
+    if (!ticketPrices) {
+      // Fallback inteligente basado en el total
+      const averagePrice = selectedSeats.length > 0 ? totalPrice / selectedSeats.length : 12.5
+      const defaultPrices = {
+        standard: averagePrice,
+        premium: averagePrice * 1.1,
+        vip: averagePrice * 1.2,
+      }
+      return defaultPrices[seatType]
+    }
+    return ticketPrices[seatType]
+  }
 
   // 🔹 Formatear número de tarjeta
   const formatCardNumber = (value: string) =>
@@ -115,16 +141,22 @@ export function PaymentForm({
         movieTitle: booking.showtime.movie.title,
         showtime: `${booking.showtime.date} ${booking.showtime.time}`,
         cinema: booking.showtime.room.name,
-        seats: booking.bookingSeats.map((bs) => ({
-          id: bs.seat.id,
-          row: bs.seat.row,
-          number: bs.seat.number,
-          type: bs.seat.type,
-        })),
+        seats: booking.bookingSeats.map((bs) => {
+          // ✅ Usar la función helper para asegurar el tipo correcto
+          const seatType = ensureSeatType(bs.seat.type)
+          return {
+            id: bs.seat.id,
+            row: bs.seat.row,
+            number: bs.seat.number,
+            type: seatType,
+            price: getSeatPrice(seatType), // ✅ Incluir precio individual
+          }
+        }),
         totalPrice: parseFloat(booking.total_price),
         payment_method: booking.payment_method,
         customer_email: booking.customer_email,
         purchaseDate: booking.purchase_date,
+        ticketPrices: ticketPrices, // ✅ Incluir estructura de precios
       }
 
       onPaymentComplete(paymentData)
@@ -289,7 +321,9 @@ export function PaymentForm({
                           {seat.type}
                         </Badge>
                       </span>
-                      <span>Q{seatPrices[seat.type].toFixed(2)}</span>
+                      <span>
+                        Q{getSeatPrice(seat.type).toFixed(2)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -312,6 +346,27 @@ export function PaymentForm({
                   <span className="text-primary">Q{finalTotal.toFixed(2)}</span>
                 </div>
               </div>
+
+              {/* ✅ Mostrar precios de referencia si están disponibles */}
+              {ticketPrices && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-2">Precios aplicados:</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="text-center">
+                      <div className="font-medium">Estándar</div>
+                      <div>Q{ticketPrices.standard.toFixed(2)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-medium">Premium</div>
+                      <div>Q{ticketPrices.premium.toFixed(2)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-medium">VIP</div>
+                      <div>Q{ticketPrices.vip.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

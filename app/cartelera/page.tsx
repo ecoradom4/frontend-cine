@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { Navbar } from "@/components/layout/navbar"
-import { MovieGrid } from "@/components/movies/movie-grid"
+import { MovieGrid, type Movie } from "@/components/movies/movie-grid" // ✅ Importa Movie desde movie-grid
 import { MovieFilters } from "@/components/movies/movie-filters"
 import { moviesApi, type UIMovie } from "@/services/movies-api"
 
 export default function CarteleraPage() {
   const { user } = useAuth()
-  const [movies, setMovies] = useState<UIMovie[]>([])
+  const [movies, setMovies] = useState<Movie[]>([]) // ✅ Usa Movie[]
   const [isLoading, setIsLoading] = useState(true)
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -18,34 +18,49 @@ export default function CarteleraPage() {
   const [selectedCinema, setSelectedCinema] = useState("Todas las sucursales")
 
   useEffect(() => {
-  const fetchMovies = async () => {
-    try {
-      setIsLoading(true)
-      const params: any = {}
-      if (searchTerm) params.search = searchTerm
-      if (selectedGenre !== "Todos") params.genre = selectedGenre
+    const fetchMovies = async () => {
+      try {
+        setIsLoading(true)
+        const params: any = {}
+        if (searchTerm) params.search = searchTerm
+        if (selectedGenre !== "Todos") params.genre = selectedGenre
 
-      const data = await moviesApi.getMovies(params)
+        const data = await moviesApi.getMovies(params)
 
-      // 🔍 Filtrado adicional en el front
-      const filtered = data.movies.filter(
-        (m) =>
-          m.status === "active" &&
-          m.showtimes.length > 0 &&
-          (!selectedDate || m.showtimes.some((s) => s.startsWith(selectedDate)))
-      )
+        const filtered = data.movies.filter(
+          (m) =>
+            m.status === "active" &&
+            m.showtimes.length > 0 &&
+            (!selectedDate || m.showtimes.some((s) => s.startsWith(selectedDate)))
+        )
 
-      setMovies(filtered)
-    } catch (err) {
-      console.error("Error al obtener películas:", err)
-    } finally {
-      setIsLoading(false)
+        // ✅ Convertir UIMovie[] a Movie[]
+        const convertedMovies: Movie[] = filtered.map(movie => ({
+          id: movie.id,
+          title: movie.title,
+          genre: movie.genre,
+          duration: movie.duration,
+          rating: movie.rating,
+          description: movie.description,
+          price: movie.price,
+          releaseDate: movie.releaseDate,
+          poster: movie.poster,
+          status: (movie.status === 'active' || movie.status === 'inactive') 
+            ? movie.status 
+            : 'inactive',
+          showtimes: movie.showtimes
+        }))
+
+        setMovies(convertedMovies)
+      } catch (err) {
+        console.error("Error al obtener películas:", err)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
 
-  fetchMovies()
-}, [searchTerm, selectedGenre, selectedDate])
-
+    fetchMovies()
+  }, [searchTerm, selectedGenre, selectedDate])
 
   const handleClearFilters = () => {
     setSearchTerm("")

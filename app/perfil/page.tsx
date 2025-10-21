@@ -14,7 +14,7 @@ import { bookingsUserApi, type UserBooking } from "@/services/bookings-user-api"
 
 export default function ProfilePage() {
   const { user } = useAuth()
-  const router = useRouter() // ✅ Hook para navegación en cliente
+  const router = useRouter() 
   const [bookings, setBookings] = useState<UserBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

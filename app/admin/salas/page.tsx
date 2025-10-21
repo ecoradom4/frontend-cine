@@ -18,41 +18,41 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Search, MapPin } from "lucide-react"
+import { Plus, Edit, Trash2, Search, MapPin, Loader2 } from "lucide-react"
 import { RoleGuard } from "@/components/auth/role-guard"
-
-interface Room {
-  id: string
-  name: string
-  capacity: number
-  type: string
-  status: "active" | "maintenance" | "inactive"
-  location: string
-}
-
-const mockRooms: Room[] = [
-  { id: "1", name: "Sala 1", capacity: 150, type: "Estándar", status: "active", location: "Planta Baja" },
-  { id: "2", name: "Sala 2", capacity: 120, type: "Premium", status: "active", location: "Planta Baja" },
-  { id: "3", name: "Sala 3", capacity: 100, type: "VIP", status: "maintenance", location: "Primer Piso" },
-  { id: "4", name: "Sala 4", capacity: 180, type: "IMAX", status: "active", location: "Primer Piso" },
-  { id: "5", name: "Sala 5", capacity: 200, type: "Estándar", status: "active", location: "Segundo Piso" },
-  { id: "6", name: "Sala 6", capacity: 90, type: "Premium", status: "inactive", location: "Segundo Piso" },
-]
+import { useRooms } from "@/hooks/useRooms"
+import type { Room, RoomInput } from "@/services/roomService"
 
 export default function AdminRoomsPage() {
   const { user } = useAuth()
-  const [rooms, setRooms] = useState<Room[]>(mockRooms)
+  const {
+    rooms,
+    locations,
+    loading,
+    error,
+    createRoom,
+    updateRoom,
+    deleteRoom,
+    searchRooms,
+    roomTypes,
+    roomStatuses,
+    roomLocations,
+    clearError
+  } = useRooms()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingRoom, setEditingRoom] = useState<Room | null>(null)
+  const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     capacity: "",
-    type: "",
-    status: "active" as Room["status"],
-    location: "",
+    type: "Estándar" as "Estándar" | "Premium" | "VIP" | "IMAX" | "4DX",
+    status: "active" as "active" | "maintenance" | "inactive",
+    location: "Planta Baja" as "Planta Baja" | "Primer Piso" | "Segundo Piso" | "Tercer Piso",
   })
 
+  // Filtrar salas localmente para búsqueda en tiempo real
   const filteredRooms = rooms.filter(
     (room) =>
       room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -75,17 +75,24 @@ export default function AdminRoomsPage() {
       setFormData({
         name: "",
         capacity: "",
-        type: "",
+        type: "Estándar",
         status: "active",
-        location: "",
+        location: "Planta Baja",
       })
     }
     setIsDialogOpen(true)
+    clearError() // Limpiar errores anteriores al abrir el diálogo
   }
 
-  const handleSave = () => {
-    const roomData: Room = {
-      id: editingRoom?.id || Date.now().toString(),
+  const handleSave = async () => {
+    if (!formData.name || !formData.capacity || !formData.type || !formData.location) {
+      alert("Por favor completa todos los campos requeridos")
+      return
+    }
+
+    setSaving(true)
+
+    const roomData: RoomInput = {
       name: formData.name,
       capacity: Number.parseInt(formData.capacity),
       type: formData.type,
@@ -93,19 +100,51 @@ export default function AdminRoomsPage() {
       location: formData.location,
     }
 
-    if (editingRoom) {
-      setRooms(rooms.map((r) => (r.id === editingRoom.id ? roomData : r)))
-    } else {
-      setRooms([...rooms, roomData])
-    }
+    try {
+      let success: boolean
+      
+      if (editingRoom) {
+        success = await updateRoom(editingRoom.id, roomData)
+      } else {
+        success = await createRoom(roomData)
+      }
 
-    setIsDialogOpen(false)
+      if (success) {
+        setIsDialogOpen(false)
+        setEditingRoom(null)
+        setFormData({
+          name: "",
+          capacity: "",
+          type: "Estándar",
+          status: "active",
+          location: "Planta Baja",
+        })
+      }
+    } catch (err) {
+      // El error ya está manejado por el hook
+      console.error('Error guardando sala:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("¿Estás seguro de que quieres eliminar esta sala?")) {
-      setRooms(rooms.filter((r) => r.id !== id))
+      await deleteRoom(id)
     }
+  }
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchTerm(value)
+    
+    // Si la búsqueda está vacía, no hacer nada (el hook ya tiene todas las salas)
+    if (!value.trim()) {
+      return
+    }
+    
+    // Opcional: puedes usar searchRooms del hook para búsqueras en el servidor
+    // searchRooms(value)
   }
 
   const getStatusColor = (status: Room["status"]) => {
@@ -132,6 +171,22 @@ export default function AdminRoomsPage() {
       default:
         return "Desconocido"
     }
+  }
+
+  if (loading && rooms.length === 0) {
+    return (
+      <RoleGuard allowedRoles={["admin"]}>
+        <div className="min-h-screen bg-background">
+          <Navbar />
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Cargando salas...</span>
+            </div>
+          </main>
+        </div>
+      </RoleGuard>
+    )
   }
 
   return (
@@ -161,7 +216,7 @@ export default function AdminRoomsPage() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Nombre</Label>
+                      <Label htmlFor="name">Nombre *</Label>
                       <Input
                         id="name"
                         value={formData.name}
@@ -170,72 +225,100 @@ export default function AdminRoomsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="capacity">Capacidad</Label>
+                      <Label htmlFor="capacity">Capacidad *</Label>
                       <Input
                         id="capacity"
                         type="number"
                         value={formData.capacity}
                         onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                         placeholder="150"
+                        min="1"
+                        max="500"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="type">Tipo</Label>
+                      <Label htmlFor="type">Tipo *</Label>
                       <Select
                         value={formData.type}
-                        onValueChange={(value) => setFormData({ ...formData, type: value })}
+                        onValueChange={(value: "Estándar" | "Premium" | "VIP" | "IMAX" | "4DX") => 
+                          setFormData({ ...formData, type: value })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona un tipo" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Estándar">Estándar</SelectItem>
-                          <SelectItem value="Premium">Premium</SelectItem>
-                          <SelectItem value="VIP">VIP</SelectItem>
-                          <SelectItem value="IMAX">IMAX</SelectItem>
-                          <SelectItem value="4DX">4DX</SelectItem>
+                          {roomTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="location">Ubicación</Label>
+                      <Label htmlFor="location">Ubicación *</Label>
                       <Select
                         value={formData.location}
-                        onValueChange={(value) => setFormData({ ...formData, location: value })}
+                        onValueChange={(value: "Planta Baja" | "Primer Piso" | "Segundo Piso" | "Tercer Piso") => 
+                          setFormData({ ...formData, location: value })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona una ubicación" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Planta Baja">Planta Baja</SelectItem>
-                          <SelectItem value="Primer Piso">Primer Piso</SelectItem>
-                          <SelectItem value="Segundo Piso">Segundo Piso</SelectItem>
-                          <SelectItem value="Tercer Piso">Tercer Piso</SelectItem>
+                          {roomLocations.map((location) => (
+                            <SelectItem key={location.value} value={location.value}>
+                              {location.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="status">Estado</Label>
+                      <Label htmlFor="status">Estado *</Label>
                       <Select
                         value={formData.status}
-                        onValueChange={(value: Room["status"]) => setFormData({ ...formData, status: value })}
+                        onValueChange={(value: "active" | "maintenance" | "inactive") => 
+                          setFormData({ ...formData, status: value })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="active">Activa</SelectItem>
-                          <SelectItem value="maintenance">Mantenimiento</SelectItem>
-                          <SelectItem value="inactive">Inactiva</SelectItem>
+                          {roomStatuses.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              {status.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
+                  
+                  {error && (
+                    <div className="bg-destructive/15 text-destructive px-3 py-2 rounded-md text-sm">
+                      {error}
+                    </div>
+                  )}
+
                   <div className="flex justify-end gap-2 mt-6">
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsDialogOpen(false)}
+                      disabled={saving}
+                    >
                       Cancelar
                     </Button>
-                    <Button onClick={handleSave}>{editingRoom ? "Guardar Cambios" : "Crear Sala"}</Button>
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={saving}
+                    >
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {editingRoom ? "Guardar Cambios" : "Crear Sala"}
+                    </Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -249,17 +332,37 @@ export default function AdminRoomsPage() {
                   <Input
                     placeholder="Buscar salas por nombre, tipo o ubicación..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchChange}
                     className="pl-10"
                   />
                 </div>
               </CardContent>
             </Card>
 
+            {/* Error Message */}
+            {error && (
+              <Card className="border-destructive">
+                <CardContent className="p-4">
+                  <div className="text-destructive text-sm">{error}</div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={clearError}
+                    className="mt-2"
+                  >
+                    Cerrar
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Rooms Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Salas ({filteredRooms.length})</CardTitle>
+                <CardTitle>
+                  Salas ({filteredRooms.length})
+                  {loading && <Loader2 className="h-4 w-4 inline ml-2 animate-spin" />}
+                </CardTitle>
                 <CardDescription>Lista de todas las salas del cine</CardDescription>
               </CardHeader>
               <CardContent>
@@ -295,10 +398,20 @@ export default function AdminRoomsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleOpenDialog(room)}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleOpenDialog(room)}
+                              disabled={loading}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(room.id)}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleDelete(room.id)}
+                              disabled={loading}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -307,6 +420,12 @@ export default function AdminRoomsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                
+                {filteredRooms.length === 0 && !loading && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {searchTerm ? "No se encontraron salas que coincidan con la búsqueda" : "No se encontraron salas"}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

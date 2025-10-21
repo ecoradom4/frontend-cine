@@ -22,6 +22,12 @@ export interface Showtime {
     booked_seats: number
     occupancy_rate: string
   }
+  // ✅ Agregar ticket_prices
+  ticket_prices?: {
+    standard: string
+    premium: string
+    vip: string
+  }
 }
 
 export interface Seat {
@@ -115,6 +121,7 @@ export const showtimesApi = {
         room: s.room,
         seats: s.seats,
         booking_info: s.booking_info,
+        ticket_prices: s.ticket_prices, // ✅ Incluir precios de tickets
       } as Showtime
     } else {
       throw new Error("Error al obtener función")

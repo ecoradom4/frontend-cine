@@ -1,8 +1,25 @@
 "use client"
 
-import { MovieCard, type Movie } from "./movie-card"
+import { MovieCard } from "./movie-card" 
 import { Skeleton } from "@/components/ui/skeleton"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
+
+// ✅ Exporta el tipo Movie desde aquí también para que cartelera/page.tsx lo pueda usar
+export interface Movie {
+  id: string;
+  title: string;
+  genre: string;
+  duration: number;
+  rating: number;
+  description: string;
+  price: number;
+  releaseDate: string;
+  poster: string;
+  status: 'active' | 'inactive';
+  showtimes?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 interface MovieGridProps {
   movies: Movie[]

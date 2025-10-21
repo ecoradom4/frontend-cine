@@ -14,13 +14,12 @@ interface SeatSelectionProps {
   movieTitle: string
   showtimeLabel: string
   cinema: string
-  onSeatsSelected: (seats: Seat[], total: number) => void
-}
-
-const seatPrices = {
-  standard: 12.5,
-  premium: 15.0,
-  vip: 20.0,
+  // ✅ Actualizado para pasar también los precios
+  onSeatsSelected: (seats: Seat[], total: number, ticketPrices?: {
+    standard: number
+    premium: number
+    vip: number
+  }) => void
 }
 
 export function SeatSelection({
@@ -33,24 +32,50 @@ export function SeatSelection({
   const [seats, setSeats] = useState<Seat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [roomInfo, setRoomInfo] = useState<{ name: string; capacity: number } | null>(null)
+  const [ticketPrices, setTicketPrices] = useState<{
+    standard: number
+    premium: number
+    vip: number
+  } | null>(null)
 
+  // Función para calcular el total basado en precios reales
   const selectedSeats = seats.filter((seat) => seat.status === "selected")
-  const totalPrice = selectedSeats.reduce((sum, seat) => sum + seatPrices[seat.type], 0)
+  const totalPrice = selectedSeats.reduce((sum, seat) => {
+    if (!ticketPrices) return sum
+    return sum + ticketPrices[seat.type]
+  }, 0)
 
   useEffect(() => {
     const fetchSeats = async () => {
       try {
         setIsLoading(true)
 
-        // 1️⃣ Obtener toda la función (incluye movie, room y seats)
+        // 1️⃣ Obtener toda la función (incluye movie, room, seats y ticket_prices)
         const showtime = await showtimesApi.getShowtimeById(showtimeId)
         const apiSeats = showtime.seats || []
         const room = showtime.room
 
-        // 2️⃣ Obtener asientos reservados del backend
+        // 2️⃣ Obtener precios reales del backend
+        if (showtime.ticket_prices) {
+          setTicketPrices({
+            standard: parseFloat(showtime.ticket_prices.standard),
+            premium: parseFloat(showtime.ticket_prices.premium),
+            vip: parseFloat(showtime.ticket_prices.vip),
+          })
+        } else {
+          // Fallback: usar precio base si no hay ticket_prices
+          const basePrice = parseFloat(showtime.price)
+          setTicketPrices({
+            standard: basePrice,
+            premium: basePrice * 1.1, // +10%
+            vip: basePrice * 1.2,     // +20%
+          })
+        }
+
+        // 3️⃣ Obtener asientos reservados del backend
         const reservedSeats = await showtimesApi.getReservedSeats(showtimeId)
 
-        // 3️⃣ Normalizar estructura con reglas de disponibilidad
+        // 4️⃣ Normalizar estructura con reglas de disponibilidad
         const normalizedSeats: Seat[] = apiSeats.map((s: any) => {
           const isReserved = reservedSeats.some((r) => r.seat_id === s.id)
           return {
@@ -109,9 +134,16 @@ export function SeatSelection({
     }
   }
 
+  // Función para obtener el precio de un asiento
+  const getSeatPrice = (seatType: "standard" | "premium" | "vip"): string => {
+    if (!ticketPrices) return "0.00"
+    return ticketPrices[seatType].toFixed(2)
+  }
+
+  // ✅ Actualizado para pasar los precios al componente padre
   const handleContinue = () => {
-    if (selectedSeats.length > 0) {
-      onSeatsSelected(selectedSeats, totalPrice)
+    if (selectedSeats.length > 0 && ticketPrices) {
+      onSeatsSelected(selectedSeats, totalPrice, ticketPrices)
     }
   }
 
@@ -178,7 +210,7 @@ export function SeatSelection({
                                 "w-8 h-8 rounded-t-lg text-xs font-medium transition-colors",
                                 getSeatColor(seat)
                               )}
-                              title={`${seat.row}${seat.number} - ${seat.type} - Q${seatPrices[seat.type]}`}
+                              title={`${seat.row}${seat.number} - ${seat.type} - Q${getSeatPrice(seat.type)}`}
                             >
                               {seat.number}
                             </button>
@@ -195,15 +227,21 @@ export function SeatSelection({
               <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-muted rounded-t-lg border" />
-                  <span>Estándar (Q12.50)</span>
+                  <span>
+                    Estándar {ticketPrices ? `(Q${getSeatPrice("standard")})` : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-chart-2 rounded-t-lg" />
-                  <span>Premium (Q15.00)</span>
+                  <span>
+                    Premium {ticketPrices ? `(Q${getSeatPrice("premium")})` : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-chart-4 rounded-t-lg" />
-                  <span>VIP (Q20.00)</span>
+                  <span>
+                    VIP {ticketPrices ? `(Q${getSeatPrice("vip")})` : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-primary rounded-t-lg" />
@@ -244,14 +282,16 @@ export function SeatSelection({
                           {seat.row}
                           {seat.number} ({seat.type})
                         </span>
-                        <span>Q{seatPrices[seat.type].toFixed(2)}</span>
+                        <span>
+                          {ticketPrices ? `Q${getSeatPrice(seat.type)}` : "Cargando..."}
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {selectedSeats.length > 0 && (
+              {selectedSeats.length > 0 && ticketPrices && (
                 <>
                   <Separator />
                   <div className="flex justify-between font-medium">
@@ -267,6 +307,12 @@ export function SeatSelection({
               {selectedSeats.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center">
                   Selecciona al menos un asiento para continuar
+                </p>
+              )}
+
+              {selectedSeats.length > 0 && !ticketPrices && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Cargando precios...
                 </p>
               )}
             </CardContent>

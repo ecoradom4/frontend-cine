@@ -9,16 +9,19 @@ import Link from "next/link"
 import { useState } from "react"
 
 export interface Movie {
-  id: string
-  title: string
-  genre: string
-  duration: number
-  rating: number
-  poster: string
-  description: string
-  showtimes: string[]
-  price: number
-  releaseDate: string
+  id: string;
+  title: string;
+  genre: string;
+  duration: number;
+  rating: number;
+  description: string;
+  price: number;
+  releaseDate: string;
+  poster: string;
+  status: 'active' | 'inactive';
+  showtimes?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface MovieCardProps {
@@ -79,11 +82,6 @@ export function MovieCard({ movie, showAdminActions = false }: MovieCardProps) {
                 <Button asChild size="sm" className="flex-1">
                   <Link href={`/pelicula/${movie.id}`}>Ver Detalles</Link>
                 </Button>
-                {showAdminActions && (
-                  <Button variant="outline" size="sm">
-                    Editar
-                  </Button>
-                )}
               </div>
             </div>
           </div>

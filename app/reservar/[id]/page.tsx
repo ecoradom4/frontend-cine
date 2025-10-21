@@ -29,6 +29,11 @@ export default function BookingPage() {
   const [movieTitle, setMovieTitle] = useState("")
   const [showtimeLabel, setShowtimeLabel] = useState("")
   const [cinemaName, setCinemaName] = useState("")
+  const [ticketPrices, setTicketPrices] = useState<{
+    standard: number
+    premium: number
+    vip: number
+  } | undefined>(undefined) 
 
   // 🧩 Cargar datos de la función desde el backend
   useEffect(() => {
@@ -43,6 +48,23 @@ export default function BookingPage() {
         setMovieTitle(movie.title)
         setShowtimeLabel(`${showtime.date} ${showtime.time}`)
         setCinemaName(showtime.room?.name || "Cine Connect Centro")
+        
+        // ✅ Obtener precios reales del showtime
+        if (showtime.ticket_prices) {
+          setTicketPrices({
+            standard: parseFloat(showtime.ticket_prices.standard),
+            premium: parseFloat(showtime.ticket_prices.premium),
+            vip: parseFloat(showtime.ticket_prices.vip),
+          })
+        } else {
+          // Fallback: usar precio base si no hay ticket_prices
+          const basePrice = parseFloat(showtime.price)
+          setTicketPrices({
+            standard: basePrice,
+            premium: basePrice * 1.1, // +10%
+            vip: basePrice * 1.2,     // +20%
+          })
+        }
       } catch (err: any) {
         console.error("Error al cargar la función:", err)
         setErrorMessage("No se pudo cargar la información de la función.")
@@ -84,9 +106,18 @@ export default function BookingPage() {
     )
   }
 
-  const handleSeatsSelected = (seats: Seat[], total: number) => {
+  // ✅ Actualizado para recibir ticketPrices
+  const handleSeatsSelected = (seats: Seat[], total: number, prices?: {
+    standard: number
+    premium: number
+    vip: number
+  }) => {
     setSelectedSeats(seats)
     setTotalPrice(total)
+    // Usar los precios pasados desde SeatSelection o los del showtime
+    if (prices) {
+      setTicketPrices(prices)
+    }
     setCurrentStep("payment")
   }
 
@@ -122,10 +153,10 @@ export default function BookingPage() {
             totalPrice={totalPrice}
             onPaymentComplete={handlePaymentComplete}
             onBack={handleBackToSeats}
-            showtimeId={showtimeId} // ✅ agregado
+            showtimeId={showtimeId}
+            ticketPrices={ticketPrices} // ✅ Pasar precios reales
           />
         )}
-
 
         {currentStep === "confirmation" && paymentData && (
           <BookingConfirmation paymentData={paymentData} />
