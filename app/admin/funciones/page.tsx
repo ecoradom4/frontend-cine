@@ -27,9 +27,6 @@ import { useShowtimes } from "@/hooks/useShowtimes"
 import { useMovies } from "@/hooks/useMovies"
 import { useRooms } from "@/hooks/useRooms"
 
-// ========================
-// 🎬 Página principal ACTUALIZADA
-// ========================
 export default function AdminShowtimesPage() {
   const { user } = useAuth()
   const {
