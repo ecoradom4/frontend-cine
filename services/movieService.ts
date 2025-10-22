@@ -1,7 +1,7 @@
 // src/services/movieService.ts
 import type { Movie } from "@/components/movies/movie-card";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-cine-b0xw.onrender.com/api';
 
 // Extender el tipo Movie para incluir status
 export interface MovieWithStatus extends Movie {

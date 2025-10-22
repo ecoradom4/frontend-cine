@@ -3,7 +3,7 @@
 import type { MovieWithStatus } from "@/services/movieService"
 import type { Room } from "@/services/roomService"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend-cine-b0xw.onrender.com/api"
 
 
 export interface Showtime {

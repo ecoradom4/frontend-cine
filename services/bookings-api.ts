@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios"
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"
+  process.env.NEXT_PUBLIC_API_URL || "https://backend-cine-b0xw.onrender.com/api"
 
 // 🎫 Tipos de datos del backend actual
 export interface SeatData {

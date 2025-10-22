@@ -26,7 +26,7 @@ export interface UserBookingsResponse {
 }
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"
+  process.env.NEXT_PUBLIC_API_URL || "https://backend-cine-b0xw.onrender.com/api"
 
 const SERVER_BASE_URL = API_BASE_URL.replace(/\/api$/, "")
 
