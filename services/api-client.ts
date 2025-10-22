@@ -1,7 +1,7 @@
 // services/api-client.ts
 
 // Verificación segura de la variable de entorno
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000/api';
+const API_BASE_URL = (import.meta as any).env?.NEXT_PUBLIC_API_URL  || 'http://localhost:4000/api';
 
 class ApiClient {
   private baseURL: string;

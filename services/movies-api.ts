@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from "axios";
 
 // 🌐 Config base
 const API_BASE_URL =
-  (import.meta as any).env?.VITE_API_URL || "http://localhost:4000/api";
+  (import.meta as any).env?.NEXT_PUBLIC_API_URL  || "http://localhost:4000/api";
 
 // 🎬 Tipos del BACKEND (API)
 export interface ApiShowtime {
