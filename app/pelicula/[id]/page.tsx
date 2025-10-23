@@ -16,12 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Star, Clock, Calendar, ArrowLeft, MapPin, XCircle } from "lucide-react";
+import { Star, Clock, Calendar, ArrowLeft, MapPin, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { moviesApi } from "@/services/movies-api";
 import { roomsApi } from "@/services/rooms-api";
@@ -39,8 +34,8 @@ type Showtime = {
   id: string;
   movie_id: string;
   room_id: string;
-  date: string; // "YYYY-MM-DD"
-  time: string; // "HH:mm:ss"
+  date: string;
+  time: string;
   price: string;
   room?: {
     id: string;
@@ -68,72 +63,123 @@ export default function MovieDetailPage() {
   const [movie, setMovie] = useState<any>(null);
   const [allShowtimes, setAllShowtimes] = useState<Showtime[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Estados de carga separados
+  const [isLoadingMovie, setIsLoadingMovie] = useState(true);
+  const [isLoadingShowtimes, setIsLoadingShowtimes] = useState(true);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
-  // Filtros (progresivos)
+  // Filtros (manteniendo tu lógica exacta)
   const [searchRoom, setSearchRoom] = useState("");
   const debouncedSearch = useDebouncedValue(searchRoom, 300);
-  const [roomType, setRoomType] = useState<string>(""); // "" = todas
-  const [roomLocation, setRoomLocation] = useState<string>(""); // "" = todas
-  const [selectedDate, setSelectedDate] = useState<string>(""); // "YYYY-MM-DD"
-  const [selectedTime, setSelectedTime] = useState<string>(""); // "HH:mm:ss"
-  const [activeTab, setActiveTab] = useState<string>("todas"); // pestaña activa
+  const [roomType, setRoomType] = useState<string>("");
+  const [roomLocation, setRoomLocation] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedTime, setSelectedTime] = useState<string>("");
 
-  // 1) Película
+  // 1) Película - carga crítica
   useEffect(() => {
+    let mounted = true;
+    
     (async () => {
       try {
-        setIsLoading(true);
+        setIsLoadingMovie(true);
         const data = await moviesApi.getMovieById(movieId);
-        setMovie(data);
+        if (mounted) {
+          setMovie(data);
+        }
       } catch (err) {
         console.error("Error al cargar película:", err);
-        setMovie(null);
+        if (mounted) {
+          setMovie(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoadingMovie(false);
+        }
       }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, [movieId]);
 
   // 2) Salas activas
   useEffect(() => {
+    let mounted = true;
+    
     (async () => {
       try {
+        setIsLoadingRooms(true);
         const data = await roomsApi.getRooms({
           search: debouncedSearch || undefined,
           type: roomType || undefined,
           location: roomLocation || undefined,
           status: "active",
         });
-        setRooms((data.rooms || []).filter((r: Room) => r.status === "active"));
+        if (mounted) {
+          setRooms((data.rooms || []).filter((r: Room) => r.status === "active"));
+        }
       } catch (err) {
         console.error("Error al cargar salas:", err);
+        if (mounted) {
+          setRooms([]);
+        }
+      } finally {
+        if (mounted) {
+          setIsLoadingRooms(false);
+        }
       }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, [debouncedSearch, roomType, roomLocation]);
 
   // 3) Showtimes
   useEffect(() => {
+    let mounted = true;
+    
     (async () => {
       try {
-        setIsLoading(true);
-        const data = await showtimesApi.getShowtimes({ movieId });
-        const list = (data.showtimes || []).sort((a: Showtime, b: Showtime) => {
-          const aDate = new Date(`${a.date}T${a.time}`);
-          const bDate = new Date(`${b.date}T${b.time}`);
-          return aDate.getTime() - bDate.getTime();
+        setIsLoadingShowtimes(true);
+        const data = await showtimesApi.getShowtimes({
+          movieId,
         });
-        setAllShowtimes(list);
+        if (mounted) {
+          const list = (data.showtimes || []).sort((a: Showtime, b: Showtime) => {
+            const aDate = new Date(`${a.date}T${a.time}`);
+            const bDate = new Date(`${b.date}T${b.time}`);
+            return aDate.getTime() - bDate.getTime();
+          });
+          setAllShowtimes(list);
+        }
       } catch (err) {
         console.error("Error al cargar funciones:", err);
+        if (mounted) {
+          setAllShowtimes([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoadingShowtimes(false);
+        }
       }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, [movieId]);
 
-  // 4) Filtrado progresivo
+  // Determinar si la página principal está lista
+  const isPageReady = !isLoadingMovie && movie !== null;
+
+  // Pipeline de filtrado progresivo (tu lógica exacta)
   const filteredShowtimes = useMemo(() => {
+    if (isLoadingShowtimes || isLoadingRooms) return [];
+
     const search = debouncedSearch.trim().toLowerCase();
 
     return allShowtimes.filter((s) => {
@@ -141,48 +187,81 @@ export default function MovieDetailPage() {
       if (!room) return false;
 
       if (search) {
-        const match =
+        const hayCoincidencia =
           room.name?.toLowerCase().includes(search) ||
           room.location?.toLowerCase().includes(search);
-        if (!match) return false;
+        if (!hayCoincidencia) return false;
       }
 
       if (roomType && room.type !== roomType) return false;
-
       if (roomLocation && room.location !== roomLocation) return false;
-
       if (selectedDate && s.date !== selectedDate) return false;
-
       if (selectedTime && s.time !== selectedTime) return false;
 
       const showtimeDateTime = new Date(`${s.date}T${s.time}`);
-      if (showtimeDateTime <= new Date()) return false;
+      const now = new Date();
+      if (showtimeDateTime.getTime() <= now.getTime()) return false;
 
       return true;
     });
-  }, [allShowtimes, rooms, debouncedSearch, roomType, roomLocation, selectedDate, selectedTime]);
+  }, [allShowtimes, rooms, debouncedSearch, roomType, roomLocation, selectedDate, selectedTime, isLoadingShowtimes, isLoadingRooms]);
 
-  // 5) Opciones para selects
+  // Opciones progresivas para los selects (tu lógica exacta)
   const availableRoomTypes = useMemo(() => {
     const set = new Set<string>();
     rooms.forEach((r) => {
-      const hasAny = allShowtimes.some((s) => s.room_id === r.id);
+      const hasAny = allShowtimes.some((s) => {
+        if (s.room_id !== r.id) return false;
+        const search = debouncedSearch.trim().toLowerCase();
+        if (
+          search &&
+          !(
+            r.name?.toLowerCase().includes(search) ||
+            r.location?.toLowerCase().includes(search)
+          )
+        )
+          return false;
+        if (roomLocation && r.location !== roomLocation) return false;
+        if (selectedDate && s.date !== selectedDate) return false;
+        if (selectedTime && s.time !== selectedTime) return false;
+        return true;
+      });
       if (hasAny && r.type) set.add(r.type);
     });
     return Array.from(set).sort();
-  }, [rooms, allShowtimes]);
+  }, [rooms, allShowtimes, debouncedSearch, roomLocation, selectedDate, selectedTime]);
 
   const availableLocations = useMemo(() => {
     const set = new Set<string>();
-    rooms.forEach((r) => set.add(r.location));
+    rooms.forEach((r) => {
+      const hasAny = allShowtimes.some((s) => {
+        if (s.room_id !== r.id) return false;
+        const search = debouncedSearch.trim().toLowerCase();
+        if (
+          search &&
+          !(
+            r.name?.toLowerCase().includes(search) ||
+            r.location?.toLowerCase().includes(search)
+          )
+        )
+          return false;
+        if (roomType && r.type !== roomType) return false;
+        if (selectedDate && s.date !== selectedDate) return false;
+        if (selectedTime && s.time !== selectedTime) return false;
+        return true;
+      });
+      if (hasAny && r.location) set.add(r.location);
+    });
     return Array.from(set).sort();
-  }, [rooms]);
+  }, [rooms, allShowtimes, debouncedSearch, roomType, selectedDate, selectedTime]);
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
-    filteredShowtimes.forEach((s) => set.add(s.date));
+    filteredShowtimes
+      .filter((s) => !selectedDate || s.date === selectedDate)
+      .forEach((s) => set.add(s.date));
     return Array.from(set).sort();
-  }, [filteredShowtimes]);
+  }, [filteredShowtimes, selectedDate]);
 
   const availableTimes = useMemo(() => {
     const set = new Set<string>();
@@ -190,18 +269,31 @@ export default function MovieDetailPage() {
     return Array.from(set).sort();
   }, [filteredShowtimes]);
 
-  // 6) Efectos dependientes
+  // Reset encadenado (tu lógica exacta)
   useEffect(() => {
-    if (activeTab !== "todas") {
-      setRoomLocation(activeTab);
-    } else {
-      setRoomLocation("");
+    if (roomType && !availableRoomTypes.includes(roomType)) {
+      setRoomType("");
     }
-  }, [activeTab]);
+  }, [availableRoomTypes, roomType]);
 
   useEffect(() => {
-    if (roomType && !availableRoomTypes.includes(roomType)) setRoomType("");
-  }, [availableRoomTypes, roomType]);
+    if (roomLocation && !availableLocations.includes(roomLocation)) {
+      setRoomLocation("");
+    }
+  }, [availableLocations, roomLocation]);
+
+  useEffect(() => {
+    if (selectedDate && !availableDates.includes(selectedDate)) {
+      setSelectedDate("");
+      setSelectedTime("");
+    }
+  }, [availableDates, selectedDate]);
+
+  useEffect(() => {
+    if (selectedTime && !availableTimes.includes(selectedTime)) {
+      setSelectedTime("");
+    }
+  }, [availableTimes, selectedTime]);
 
   const clearFilters = () => {
     setSearchRoom("");
@@ -209,30 +301,34 @@ export default function MovieDetailPage() {
     setRoomLocation("");
     setSelectedDate("");
     setSelectedTime("");
-    setActiveTab("todas");
   };
 
-  if (!user) return null;
-
-  if (isLoading) {
+  // Loading principal - solo muestra esto mientras carga la película
+  if (!user || isLoadingMovie) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground text-lg">Cargando película...</p>
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground text-lg">Cargando película...</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Error - solo se muestra si la película no se pudo cargar
   if (!movie) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">
-            Película no encontrada
-          </h1>
+          <XCircle className="h-16 w-16 text-destructive mb-4" />
+          <h1 className="text-2xl font-bold text-foreground mb-4">Película no encontrada</h1>
+          <p className="text-muted-foreground mb-6">
+            La película que buscas no existe o no está disponible.
+          </p>
           <Button asChild>
             <Link href="/cartelera">Volver a la cartelera</Link>
           </Button>
@@ -241,7 +337,7 @@ export default function MovieDetailPage() {
     );
   }
 
-  // ✅ UI principal
+  // Página principal - se muestra inmediatamente cuando la película está cargada
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -268,6 +364,7 @@ export default function MovieDetailPage() {
 
           {/* Detalles + funciones */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Detalles de la película */}
             <div>
               <h1 className="text-4xl font-bold text-foreground mb-4">{movie.title}</h1>
 
@@ -288,12 +385,10 @@ export default function MovieDetailPage() {
                 </div>
               </div>
 
-              <p className="text-lg text-muted-foreground leading-relaxed">
-                {movie.description}
-              </p>
+              <p className="text-lg text-muted-foreground leading-relaxed">{movie.description}</p>
             </div>
 
-            {/* Filtros y pestañas */}
+            {/* Filtros y funciones */}
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div className="flex justify-between items-center">
@@ -301,6 +396,7 @@ export default function MovieDetailPage() {
                     <MapPin className="h-5 w-5 text-primary" />
                     Filtrar funciones
                   </h3>
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -311,31 +407,24 @@ export default function MovieDetailPage() {
                   </Button>
                 </div>
 
-                {/* 🔹 Pestañas por ubicación */}
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="flex flex-wrap gap-2">
-                    <TabsTrigger value="todas">Todas</TabsTrigger>
-                    {availableLocations.map((loc) => (
-                      <TabsTrigger key={loc} value={loc}>
-                        {loc}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-
-                {/* 🔍 Filtros */}
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* 🔍 Buscar sala o ubicación */}
                   <Input
                     placeholder="Buscar sala o ubicación..."
                     value={searchRoom}
                     onChange={(e) => setSearchRoom(e.target.value)}
+                    disabled={isLoadingRooms}
                   />
 
+                  {/* 🏷 Tipo de sala */}
                   <Select
                     value={roomType || "__all__"}
                     onValueChange={(v) => setRoomType(v === "__all__" ? "" : v)}
+                    disabled={isLoadingRooms}
                   >
-                    <SelectTrigger><SelectValue placeholder="Tipo de sala" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tipo de sala" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">Todas</SelectItem>
                       {availableRoomTypes.map((t) => (
@@ -344,12 +433,15 @@ export default function MovieDetailPage() {
                     </SelectContent>
                   </Select>
 
+                  {/* 📍 Ubicación */}
                   <Select
                     value={roomLocation || "__all__"}
                     onValueChange={(v) => setRoomLocation(v === "__all__" ? "" : v)}
-                    disabled={activeTab !== "todas"} // ✅ deshabilita si hay pestaña activa
+                    disabled={isLoadingRooms}
                   >
-                    <SelectTrigger><SelectValue placeholder="Ubicación" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Ubicación" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">Todas</SelectItem>
                       {availableLocations.map((loc) => (
@@ -358,6 +450,7 @@ export default function MovieDetailPage() {
                     </SelectContent>
                   </Select>
 
+                  {/* 📅 Fecha */}
                   <Select
                     value={selectedDate || "__all__"}
                     onValueChange={(v) => {
@@ -369,12 +462,17 @@ export default function MovieDetailPage() {
                         setSelectedTime("");
                       }
                     }}
+                    disabled={isLoadingShowtimes}
                   >
-                    <SelectTrigger><SelectValue placeholder="Fecha" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Fecha" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">Todas</SelectItem>
                       {availableDates.length === 0 ? (
-                        <div className="px-2 py-1 text-muted-foreground text-sm">Sin fechas</div>
+                        <div className="px-2 py-1 text-muted-foreground text-sm">
+                          {isLoadingShowtimes ? "Cargando..." : "Sin fechas"}
+                        </div>
                       ) : (
                         availableDates.map((d) => (
                           <SelectItem key={d} value={d}>{d}</SelectItem>
@@ -383,10 +481,11 @@ export default function MovieDetailPage() {
                     </SelectContent>
                   </Select>
 
+                  {/* ⏰ Hora */}
                   <Select
                     value={selectedTime || "__all__"}
                     onValueChange={(v) => setSelectedTime(v === "__all__" ? "" : v)}
-                    disabled={!selectedDate || availableTimes.length === 0}
+                    disabled={!selectedDate || isLoadingShowtimes || availableTimes.length === 0}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={selectedDate ? "Hora" : "Seleccione fecha"} />
@@ -394,10 +493,14 @@ export default function MovieDetailPage() {
                     <SelectContent>
                       <SelectItem value="__all__">Todas</SelectItem>
                       {availableTimes.length === 0 ? (
-                        <div className="px-2 py-1 text-muted-foreground text-sm">Sin horarios</div>
+                        <div className="px-2 py-1 text-muted-foreground text-sm">
+                          {isLoadingShowtimes ? "Cargando..." : "Sin horarios"}
+                        </div>
                       ) : (
                         availableTimes.map((t) => (
-                          <SelectItem key={t} value={t}>{t.slice(0, 5)} hrs</SelectItem>
+                          <SelectItem key={t} value={t}>
+                            {t.slice(0, 5)} hrs
+                          </SelectItem>
                         ))
                       )}
                     </SelectContent>
@@ -406,10 +509,13 @@ export default function MovieDetailPage() {
 
                 {/* 🎞 Listado de funciones */}
                 <div className="mt-4 space-y-4">
-                  {isLoading ? (
-                    <p className="text-muted-foreground">Cargando funciones...</p>
+                  {isLoadingShowtimes || isLoadingRooms ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary mb-2" />
+                      <p className="text-muted-foreground">Cargando funciones disponibles...</p>
+                    </div>
                   ) : filteredShowtimes.length === 0 ? (
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground text-center py-8">
                       No hay funciones disponibles con los filtros seleccionados.
                     </p>
                   ) : (
