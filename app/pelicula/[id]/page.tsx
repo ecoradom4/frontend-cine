@@ -77,13 +77,18 @@ export default function MovieDetailPage() {
   useEffect(() => {
     (async () => {
       try {
+        setIsLoading(true); // ✅ inicia carga
         const data = await moviesApi.getMovieById(movieId);
         setMovie(data);
       } catch (err) {
         console.error("Error al cargar película:", err);
+        setMovie(null);
+      } finally {
+        setIsLoading(false); // ✅ finaliza carga
       }
     })();
   }, [movieId]);
+
 
   // 2) Salas activas (sin mandar “all”)
   useEffect(() => {
@@ -275,11 +280,22 @@ export default function MovieDetailPage() {
 
   if (!user) return null;
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground text-lg">Cargando película...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!movie) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Película no encontrada</h1>
           <Button asChild>
             <Link href="/cartelera">Volver a la cartelera</Link>
@@ -288,6 +304,7 @@ export default function MovieDetailPage() {
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background">
