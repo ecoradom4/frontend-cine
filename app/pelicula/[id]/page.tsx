@@ -209,14 +209,21 @@ export default function MovieDetailPage() {
     });
   }, [allShowtimes, rooms, debouncedSearch, roomType, roomLocation, selectedDate, selectedTime, isLoadingShowtimes, isLoadingRooms]);
 
-  // 🔄 Opciones de filtros — SIEMPRE basadas en todas las salas y funciones, no en los resultados filtrados
   const availableRoomTypes = useMemo(() => {
     const set = new Set<string>();
+
     rooms.forEach((r) => {
-      if (r.status === "active" && r.type) set.add(r.type);
+      if (
+        r.status === "active" &&
+        (!roomLocation || r.location === roomLocation) &&
+        r.type
+      ) {
+        set.add(r.type);
+      }
     });
+
     return Array.from(set).sort();
-  }, [rooms]);
+  }, [rooms, roomLocation]);
 
   const availableLocations = useMemo(() => {
     const set = new Set<string>();
@@ -228,29 +235,37 @@ export default function MovieDetailPage() {
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
-    // Se toman todas las fechas futuras disponibles (sin filtrar por ubicación)
     allShowtimes.forEach((s) => {
+      const room = rooms.find((r) => r.id === s.room_id);
+      if (!room) return;
+
       const showtimeDateTime = new Date(`${s.date}T${s.time}`);
       const now = new Date();
       if (showtimeDateTime.getTime() > now.getTime()) {
-        set.add(s.date);
+        if (!roomLocation || room.location === roomLocation) {
+          set.add(s.date);
+        }
       }
     });
     return Array.from(set).sort();
-  }, [allShowtimes]);
+  }, [allShowtimes, rooms, roomLocation]);
 
   const availableTimes = useMemo(() => {
     const set = new Set<string>();
-    // Mostrar todas las horas futuras disponibles
     allShowtimes.forEach((s) => {
+      const room = rooms.find((r) => r.id === s.room_id);
+      if (!room) return;
+
       const showtimeDateTime = new Date(`${s.date}T${s.time}`);
       const now = new Date();
       if (showtimeDateTime.getTime() > now.getTime()) {
-        set.add(s.time);
+        if (!roomLocation || room.location === roomLocation) {
+          set.add(s.time);
+        }
       }
     });
     return Array.from(set).sort();
-  }, [allShowtimes]);
+  }, [allShowtimes, rooms, roomLocation]);
 
 
   // Función para manejar cambios en ubicación (PERMITE CAMBIAR DIRECTAMENTE ENTRE OPCIONES)
