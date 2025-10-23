@@ -63,7 +63,7 @@ export default function MovieDetailPage() {
   const [movie, setMovie] = useState<any>(null);
   const [allShowtimes, setAllShowtimes] = useState<Showtime[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  
+
   // Estados de carga separados
   const [isLoadingMovie, setIsLoadingMovie] = useState(true);
   const [isLoadingShowtimes, setIsLoadingShowtimes] = useState(true);
@@ -80,7 +80,7 @@ export default function MovieDetailPage() {
   // 1) Película - carga crítica
   useEffect(() => {
     let mounted = true;
-    
+
     (async () => {
       try {
         setIsLoadingMovie(true);
@@ -108,7 +108,7 @@ export default function MovieDetailPage() {
   // 2) Salas activas
   useEffect(() => {
     let mounted = true;
-    
+
     (async () => {
       try {
         setIsLoadingRooms(true);
@@ -138,7 +138,7 @@ export default function MovieDetailPage() {
   // 3) Showtimes
   useEffect(() => {
     let mounted = true;
-    
+
     (async () => {
       try {
         setIsLoadingShowtimes(true);
@@ -209,49 +209,49 @@ export default function MovieDetailPage() {
     });
   }, [allShowtimes, rooms, debouncedSearch, roomType, roomLocation, selectedDate, selectedTime, isLoadingShowtimes, isLoadingRooms]);
 
-  // Opciones progresivas para los selects (MEJORADO - siempre muestra todas las opciones disponibles)
+  // 🔄 Opciones de filtros — SIEMPRE basadas en todas las salas y funciones, no en los resultados filtrados
   const availableRoomTypes = useMemo(() => {
     const set = new Set<string>();
-    
-    // Mostrar todos los tipos disponibles basados en los showtimes filtrados actualmente
-    filteredShowtimes.forEach((s) => {
-      const room = rooms.find((r) => r.id === s.room_id);
-      if (room?.type) {
-        set.add(room.type);
-      }
+    rooms.forEach((r) => {
+      if (r.status === "active" && r.type) set.add(r.type);
     });
-    
     return Array.from(set).sort();
-  }, [filteredShowtimes, rooms]);
+  }, [rooms]);
 
   const availableLocations = useMemo(() => {
     const set = new Set<string>();
-    
-    // Mostrar todas las ubicaciones disponibles basadas en los showtimes filtrados actualmente
-    filteredShowtimes.forEach((s) => {
-      const room = rooms.find((r) => r.id === s.room_id);
-      if (room?.location) {
-        set.add(room.location);
-      }
+    rooms.forEach((r) => {
+      if (r.status === "active" && r.location) set.add(r.location);
     });
-    
     return Array.from(set).sort();
-  }, [filteredShowtimes, rooms]);
+  }, [rooms]);
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
-    filteredShowtimes.forEach((s) => set.add(s.date));
+    // Se toman todas las fechas futuras disponibles (sin filtrar por ubicación)
+    allShowtimes.forEach((s) => {
+      const showtimeDateTime = new Date(`${s.date}T${s.time}`);
+      const now = new Date();
+      if (showtimeDateTime.getTime() > now.getTime()) {
+        set.add(s.date);
+      }
+    });
     return Array.from(set).sort();
-  }, [filteredShowtimes]);
+  }, [allShowtimes]);
 
   const availableTimes = useMemo(() => {
     const set = new Set<string>();
-    
-    // Mostrar TODAS las horas disponibles, independientemente de la fecha seleccionada
-    filteredShowtimes.forEach((s) => set.add(s.time));
-    
+    // Mostrar todas las horas futuras disponibles
+    allShowtimes.forEach((s) => {
+      const showtimeDateTime = new Date(`${s.date}T${s.time}`);
+      const now = new Date();
+      if (showtimeDateTime.getTime() > now.getTime()) {
+        set.add(s.time);
+      }
+    });
     return Array.from(set).sort();
-  }, [filteredShowtimes]);
+  }, [allShowtimes]);
+
 
   // Función para manejar cambios en ubicación (PERMITE CAMBIAR DIRECTAMENTE ENTRE OPCIONES)
   const handleLocationChange = (location: string) => {
@@ -400,7 +400,7 @@ export default function MovieDetailPage() {
                       >
                         Todas
                       </Button>
-                      
+
                       {/* Pestañas de ubicaciones disponibles */}
                       {availableLocations.map((location) => (
                         <Button
@@ -414,7 +414,7 @@ export default function MovieDetailPage() {
                           {location}
                         </Button>
                       ))}
-                      
+
                       {/* Mensaje cuando no hay ubicaciones */}
                       {availableLocations.length === 0 && !isLoadingRooms && (
                         <div className="text-sm text-muted-foreground italic">
@@ -482,8 +482,8 @@ export default function MovieDetailPage() {
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={
-                          availableTimes.length === 0 
-                            ? "Sin horarios" 
+                          availableTimes.length === 0
+                            ? "Sin horarios"
                             : "Hora"
                         } />
                       </SelectTrigger>
