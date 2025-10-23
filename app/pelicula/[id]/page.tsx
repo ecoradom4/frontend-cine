@@ -69,7 +69,7 @@ export default function MovieDetailPage() {
   const [isLoadingShowtimes, setIsLoadingShowtimes] = useState(true);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
-  // Filtros (manteniendo tu lógica exacta)
+  // Filtros
   const [searchRoom, setSearchRoom] = useState("");
   const debouncedSearch = useDebouncedValue(searchRoom, 300);
   const [roomType, setRoomType] = useState<string>("");
@@ -105,7 +105,7 @@ export default function MovieDetailPage() {
     };
   }, [movieId]);
 
-  // 2) Salas activas
+  // 2) Salas activas - ahora sin filtros iniciales para cargar todas
   useEffect(() => {
     let mounted = true;
     
@@ -113,9 +113,6 @@ export default function MovieDetailPage() {
       try {
         setIsLoadingRooms(true);
         const data = await roomsApi.getRooms({
-          search: debouncedSearch || undefined,
-          type: roomType || undefined,
-          location: roomLocation || undefined,
           status: "active",
         });
         if (mounted) {
@@ -136,7 +133,7 @@ export default function MovieDetailPage() {
     return () => {
       mounted = false;
     };
-  }, [debouncedSearch, roomType, roomLocation]);
+  }, []); // Sin dependencias, se carga una vez
 
   // 3) Showtimes
   useEffect(() => {
@@ -176,7 +173,7 @@ export default function MovieDetailPage() {
   // Determinar si la página principal está lista
   const isPageReady = !isLoadingMovie && movie !== null;
 
-  // Pipeline de filtrado progresivo (tu lógica exacta)
+  // Pipeline de filtrado progresivo (MEJORADO para ser más fluido)
   const filteredShowtimes = useMemo(() => {
     if (isLoadingShowtimes || isLoadingRooms) return [];
 
@@ -186,6 +183,7 @@ export default function MovieDetailPage() {
       const room = rooms.find((r) => r.id === s.room_id);
       if (!room) return false;
 
+      // Filtro de búsqueda
       if (search) {
         const hayCoincidencia =
           room.name?.toLowerCase().includes(search) ||
@@ -193,11 +191,19 @@ export default function MovieDetailPage() {
         if (!hayCoincidencia) return false;
       }
 
+      // Filtro de tipo
       if (roomType && room.type !== roomType) return false;
+
+      // Filtro de ubicación
       if (roomLocation && room.location !== roomLocation) return false;
+
+      // Filtro de fecha
       if (selectedDate && s.date !== selectedDate) return false;
+
+      // Filtro de hora
       if (selectedTime && s.time !== selectedTime) return false;
 
+      // Ocultar funciones pasadas
       const showtimeDateTime = new Date(`${s.date}T${s.time}`);
       const now = new Date();
       if (showtimeDateTime.getTime() <= now.getTime()) return false;
@@ -206,70 +212,58 @@ export default function MovieDetailPage() {
     });
   }, [allShowtimes, rooms, debouncedSearch, roomType, roomLocation, selectedDate, selectedTime, isLoadingShowtimes, isLoadingRooms]);
 
-  // Opciones progresivas para los selects (tu lógica exacta)
+  // Opciones progresivas para los selects (MEJORADO para ser más responsivo)
   const availableRoomTypes = useMemo(() => {
     const set = new Set<string>();
-    rooms.forEach((r) => {
-      const hasAny = allShowtimes.some((s) => {
-        if (s.room_id !== r.id) return false;
-        const search = debouncedSearch.trim().toLowerCase();
-        if (
-          search &&
-          !(
-            r.name?.toLowerCase().includes(search) ||
-            r.location?.toLowerCase().includes(search)
-          )
-        )
-          return false;
-        if (roomLocation && r.location !== roomLocation) return false;
-        if (selectedDate && s.date !== selectedDate) return false;
-        if (selectedTime && s.time !== selectedTime) return false;
-        return true;
-      });
-      if (hasAny && r.type) set.add(r.type);
+    
+    // Usar los showtimes filtrados actuales para determinar tipos disponibles
+    filteredShowtimes.forEach((s) => {
+      const room = rooms.find((r) => r.id === s.room_id);
+      if (room?.type) {
+        set.add(room.type);
+      }
     });
+    
     return Array.from(set).sort();
-  }, [rooms, allShowtimes, debouncedSearch, roomLocation, selectedDate, selectedTime]);
+  }, [filteredShowtimes, rooms]);
 
   const availableLocations = useMemo(() => {
     const set = new Set<string>();
-    rooms.forEach((r) => {
-      const hasAny = allShowtimes.some((s) => {
-        if (s.room_id !== r.id) return false;
-        const search = debouncedSearch.trim().toLowerCase();
-        if (
-          search &&
-          !(
-            r.name?.toLowerCase().includes(search) ||
-            r.location?.toLowerCase().includes(search)
-          )
-        )
-          return false;
-        if (roomType && r.type !== roomType) return false;
-        if (selectedDate && s.date !== selectedDate) return false;
-        if (selectedTime && s.time !== selectedTime) return false;
-        return true;
-      });
-      if (hasAny && r.location) set.add(r.location);
+    
+    // Usar los showtimes filtrados actuales para determinar ubicaciones disponibles
+    filteredShowtimes.forEach((s) => {
+      const room = rooms.find((r) => r.id === s.room_id);
+      if (room?.location) {
+        set.add(room.location);
+      }
     });
+    
     return Array.from(set).sort();
-  }, [rooms, allShowtimes, debouncedSearch, roomType, selectedDate, selectedTime]);
+  }, [filteredShowtimes, rooms]);
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
-    filteredShowtimes
-      .filter((s) => !selectedDate || s.date === selectedDate)
-      .forEach((s) => set.add(s.date));
-    return Array.from(set).sort();
-  }, [filteredShowtimes, selectedDate]);
-
-  const availableTimes = useMemo(() => {
-    const set = new Set<string>();
-    filteredShowtimes.forEach((s) => set.add(s.time));
+    filteredShowtimes.forEach((s) => set.add(s.date));
     return Array.from(set).sort();
   }, [filteredShowtimes]);
 
-  // Reset encadenado (tu lógica exacta)
+  const availableTimes = useMemo(() => {
+    const set = new Set<string>();
+    
+    // Si hay fecha seleccionada, solo mostrar horas de esa fecha
+    if (selectedDate) {
+      filteredShowtimes
+        .filter(s => s.date === selectedDate)
+        .forEach((s) => set.add(s.time));
+    } else {
+      // Si no hay fecha seleccionada, mostrar todas las horas disponibles
+      filteredShowtimes.forEach((s) => set.add(s.time));
+    }
+    
+    return Array.from(set).sort();
+  }, [filteredShowtimes, selectedDate]);
+
+  // Reset automático más inteligente
   useEffect(() => {
     if (roomType && !availableRoomTypes.includes(roomType)) {
       setRoomType("");
@@ -303,7 +297,7 @@ export default function MovieDetailPage() {
     setSelectedTime("");
   };
 
-  // Loading principal - solo muestra esto mientras carga la película
+  // Loading principal
   if (!user || isLoadingMovie) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -318,7 +312,7 @@ export default function MovieDetailPage() {
     );
   }
 
-  // Error - solo se muestra si la película no se pudo cargar
+  // Error
   if (!movie) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -337,7 +331,6 @@ export default function MovieDetailPage() {
     );
   }
 
-  // Página principal - se muestra inmediatamente cuando la película está cargada
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -407,104 +400,145 @@ export default function MovieDetailPage() {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="space-y-6">
                   {/* 🔍 Buscar sala o ubicación */}
-                  <Input
-                    placeholder="Buscar sala o ubicación..."
-                    value={searchRoom}
-                    onChange={(e) => setSearchRoom(e.target.value)}
-                    disabled={isLoadingRooms}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Input
+                      placeholder="Buscar sala o ubicación..."
+                      value={searchRoom}
+                      onChange={(e) => setSearchRoom(e.target.value)}
+                      disabled={isLoadingRooms}
+                      className="md:col-span-2"
+                    />
 
-                  {/* 🏷 Tipo de sala */}
-                  <Select
-                    value={roomType || "__all__"}
-                    onValueChange={(v) => setRoomType(v === "__all__" ? "" : v)}
-                    disabled={isLoadingRooms}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tipo de sala" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todas</SelectItem>
-                      {availableRoomTypes.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                    {/* 🏷 Tipo de sala */}
+                    <Select
+                      value={roomType || "__all__"}
+                      onValueChange={(v) => setRoomType(v === "__all__" ? "" : v)}
+                      disabled={isLoadingRooms}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tipo de sala" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todos los tipos</SelectItem>
+                        {availableRoomTypes.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* 📅 Fecha */}
+                    <Select
+                      value={selectedDate || "__all__"}
+                      onValueChange={(v) => {
+                        if (v === "__all__") {
+                          setSelectedDate("");
+                          setSelectedTime("");
+                        } else {
+                          setSelectedDate(v);
+                          setSelectedTime("");
+                        }
+                      }}
+                      disabled={isLoadingShowtimes}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Fecha" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas las fechas</SelectItem>
+                        {availableDates.length === 0 ? (
+                          <div className="px-2 py-1 text-muted-foreground text-sm">
+                            {isLoadingShowtimes ? "Cargando..." : "Sin fechas"}
+                          </div>
+                        ) : (
+                          availableDates.map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 📍 Ubicación - NUEVO: Pestañas en lugar de select */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-foreground">Ubicación</label>
+                    <div className="flex flex-wrap gap-2">
+                      {/* Pestaña "Todas" */}
+                      <Button
+                        variant={roomLocation === "" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setRoomLocation("")}
+                        disabled={isLoadingRooms}
+                        className="flex-1 sm:flex-none"
+                      >
+                        Todas las ubicaciones
+                      </Button>
+                      
+                      {/* Pestañas de ubicaciones disponibles */}
+                      {availableLocations.map((location) => (
+                        <Button
+                          key={location}
+                          variant={roomLocation === location ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setRoomLocation(location)}
+                          disabled={isLoadingRooms}
+                          className="flex-1 sm:flex-none"
+                        >
+                          {location}
+                        </Button>
                       ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* 📍 Ubicación */}
-                  <Select
-                    value={roomLocation || "__all__"}
-                    onValueChange={(v) => setRoomLocation(v === "__all__" ? "" : v)}
-                    disabled={isLoadingRooms}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Ubicación" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todas</SelectItem>
-                      {availableLocations.map((loc) => (
-                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* 📅 Fecha */}
-                  <Select
-                    value={selectedDate || "__all__"}
-                    onValueChange={(v) => {
-                      if (v === "__all__") {
-                        setSelectedDate("");
-                        setSelectedTime("");
-                      } else {
-                        setSelectedDate(v);
-                        setSelectedTime("");
-                      }
-                    }}
-                    disabled={isLoadingShowtimes}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Fecha" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todas</SelectItem>
-                      {availableDates.length === 0 ? (
-                        <div className="px-2 py-1 text-muted-foreground text-sm">
-                          {isLoadingShowtimes ? "Cargando..." : "Sin fechas"}
+                      
+                      {/* Mensaje cuando no hay ubicaciones */}
+                      {availableLocations.length === 0 && !isLoadingRooms && (
+                        <div className="text-sm text-muted-foreground italic">
+                          No hay ubicaciones disponibles
                         </div>
-                      ) : (
-                        availableDates.map((d) => (
-                          <SelectItem key={d} value={d}>{d}</SelectItem>
-                        ))
                       )}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  </div>
 
                   {/* ⏰ Hora */}
-                  <Select
-                    value={selectedTime || "__all__"}
-                    onValueChange={(v) => setSelectedTime(v === "__all__" ? "" : v)}
-                    disabled={!selectedDate || isLoadingShowtimes || availableTimes.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={selectedDate ? "Hora" : "Seleccione fecha"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todas</SelectItem>
-                      {availableTimes.length === 0 ? (
-                        <div className="px-2 py-1 text-muted-foreground text-sm">
-                          {isLoadingShowtimes ? "Cargando..." : "Sin horarios"}
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Select
+                      value={selectedTime || "__all__"}
+                      onValueChange={(v) => setSelectedTime(v === "__all__" ? "" : v)}
+                      disabled={!selectedDate || isLoadingShowtimes || availableTimes.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={
+                          selectedDate 
+                            ? availableTimes.length === 0 
+                              ? "Sin horarios" 
+                              : "Seleccionar hora"
+                            : "Seleccione fecha primero"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas las horas</SelectItem>
+                        {availableTimes.length === 0 ? (
+                          <div className="px-2 py-1 text-muted-foreground text-sm">
+                            Sin horarios
+                          </div>
+                        ) : (
+                          availableTimes.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t.slice(0, 5)} hrs
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Contador de resultados */}
+                    <div className="flex items-center justify-end text-sm text-muted-foreground">
+                      {isLoadingShowtimes || isLoadingRooms ? (
+                        "Cargando..."
                       ) : (
-                        availableTimes.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t.slice(0, 5)} hrs
-                          </SelectItem>
-                        ))
+                        `${filteredShowtimes.length} función${filteredShowtimes.length !== 1 ? 'es' : ''} encontrada${filteredShowtimes.length !== 1 ? 's' : ''}`
                       )}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 🎞 Listado de funciones */}
@@ -524,7 +558,7 @@ export default function MovieDetailPage() {
                       return (
                         <div
                           key={s.id}
-                          className="border p-4 rounded-lg flex justify-between items-center"
+                          className="border p-4 rounded-lg flex justify-between items-center hover:bg-muted/50 transition-colors"
                         >
                           <div>
                             <p className="font-semibold">{room?.name ?? s.room?.name}</p>
